@@ -1,4 +1,4 @@
-module github.com/azzz/shardedkv
+module github.com/azzz/hashring
 
 go 1.16
 

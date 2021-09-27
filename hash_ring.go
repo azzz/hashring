@@ -1,4 +1,4 @@
-package chooser
+package hashring
 
 import (
 	"fmt"
@@ -7,40 +7,54 @@ import (
 	"sync"
 )
 
+type Hasher func([]byte) (uint64, error)
+
 type uint64Slice []uint64
 
 func (x uint64Slice) Len() int           { return len(x) }
 func (x uint64Slice) Less(i, j int) bool { return x[i] < x[j] }
 func (x uint64Slice) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
 
-// HashRing uses Consistent Hash Ring to choose a worker node
+// HashRing uses Hash Ring algorithm to choose a shard.
+// Adding a shard, HashRing creates a provided number of virtual shards to
+// distribute shards evenly.
+//
+// Usage:
+// ring := New(100, FNVHash)
+// ring.Add("shard-a")
+// ring.Add("shard-b")
+// shard := ring.Get("foobar")
 type HashRing struct {
-	mu       sync.Mutex
-	replicas int               // number of virtual replicas per shard
-	hashes   uint64Slice       // ordered slice of hashes of both real and virtual shards
-	shards   map[uint64]string // hash-to-shard map
-	hashfn   func([]byte) (uint64, error)
+	mu            sync.Mutex
+	virtualShards int               // number of virtual virtualShards per shard
+	hashes        uint64Slice       // ordered slice of hashes of both real and virtual shards
+	shards        map[uint64]string // FNVHash-to-shard map
+	hashfn        Hasher
 }
 
-func New(replicas int) *HashRing {
+// New creates a new instance of HashRing using a provided Hasher function.
+// You can use a simple hash function FNVHash.
+// Example:
+// ring := New(100, FNVHash)
+func New(virtualShards int, hasher Hasher) *HashRing {
 	return &HashRing{
-		mu:       sync.Mutex{},
-		replicas: replicas,
-		hashes:   uint64Slice{},
-		shards:   map[uint64]string{},
-		hashfn:   hash,
+		mu:            sync.Mutex{},
+		virtualShards: virtualShards,
+		hashes:        uint64Slice{},
+		shards:        map[uint64]string{},
+		hashfn:        hasher,
 	}
 }
 
-// Add shard to the ring with `h.replicas` virtual shards.
+// Add shard to the ring with `h.virtualShards` virtual shards.
 func (h *HashRing) Add(shard string) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	for i := 0; i < h.replicas; i++ {
+	for i := 0; i < h.virtualShards; i++ {
 		sh, err := h.hashfn([]byte(strconv.Itoa(i) + shard))
 		if err != nil {
-			return fmt.Errorf("failed to hash shard: %w", err)
+			return fmt.Errorf("failed to FNVHash shard: %w", err)
 		}
 
 		h.hashes = append(h.hashes, sh)
@@ -63,7 +77,7 @@ func (h *HashRing) Get(key string) (string, error) {
 
 	kh, err := h.hashfn([]byte(key))
 	if err != nil {
-		return "", fmt.Errorf("failed to hash key: %w", err)
+		return "", fmt.Errorf("failed to FNVHash key: %w", err)
 	}
 
 	sh := searchRanges(h.hashes, kh)

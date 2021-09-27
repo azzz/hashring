@@ -1,4 +1,4 @@
-package chooser
+package hashring
 
 import (
 	"github.com/stretchr/testify/assert"
@@ -18,25 +18,25 @@ func Test_searchSegments(t *testing.T) {
 	}{
 		{
 			"search 2",
-			args{[]uint64{4,8,15,16,23,42}, 2},
+			args{[]uint64{4, 8, 15, 16, 23, 42}, 2},
 			4,
 		},
 
 		{
 			"search 4",
-			args{[]uint64{4,8,15,16,23,42}, 4},
+			args{[]uint64{4, 8, 15, 16, 23, 42}, 4},
 			4,
 		},
 
 		{
 			"search 9",
-			args{[]uint64{4,8,15,16,23,42}, 9},
+			args{[]uint64{4, 8, 15, 16, 23, 42}, 9},
 			15,
 		},
 
 		{
 			"search 43",
-			args{[]uint64{4,8,15,16,23,42}, 43},
+			args{[]uint64{4, 8, 15, 16, 23, 42}, 43},
 			4,
 		},
 
@@ -68,7 +68,7 @@ func Test_searchSegments(t *testing.T) {
 }
 
 func TestHashRing(t *testing.T) {
-	t.Run("add shard with defined number of virtual replicas", func(t *testing.T) {
+	t.Run("add shard with defined number of virtual virtualShards", func(t *testing.T) {
 		const (
 			Replicas = 5
 			Shard    = "node-1"
@@ -95,7 +95,6 @@ func TestHashRing(t *testing.T) {
 
 		assert.Nil(t, ring.Add(ShardA))
 		assert.Nil(t, ring.Add(ShardB))
-
 
 		got := make(map[string]int, 1000)
 		for i := 0; i < 1000; i++ {

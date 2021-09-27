@@ -1,11 +1,12 @@
-package chooser
+package hashring
 
 import (
 	"fmt"
 	"hash/fnv"
 )
 
-func hash(val []byte) (uint64, error) {
+// FNVHash implements a hash function using hash/fnv algorithm.
+func FNVHash(val []byte) (uint64, error) {
 	hasher := fnv.New64a()
 
 	if _, err := hasher.Write(val); err != nil {
